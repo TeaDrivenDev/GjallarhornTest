@@ -25,6 +25,8 @@ module VM =
 
         let directory = source |> Binding.editMember subject <@ initialValue.Directory @> noValidation
 
+        // This should call `getDirectory()` and write the result back into the model.
+        // However, I can't figure out how to fit that into the "Observable" concept.
         let chooseDirectoryCommand = subject.Command "ChooseDirectoryCommand"
 
         subject
