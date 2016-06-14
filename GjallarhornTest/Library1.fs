@@ -11,6 +11,9 @@ open Gjallarhorn.Validation
 type ModelThing = { Directory : string }
 
 module VM =
+    let noValidation _ = None
+
+    let directoryExists dir = if System.IO.Directory.Exists dir then None else Some "No"
 
     let getDirectory() =
         use dialog = new FolderBrowserDialog()
@@ -19,17 +22,28 @@ module VM =
         | _ -> None
 
     let create (thingIn : IObservable<ModelThing>) initialValue =
-        let subject = Binding.createSubject()
+        let bindingSource = Binding.createObservableSource()
 
-        let source = subject.ObservableToSignal initialValue thingIn
+        let source = bindingSource.ObservableToSignal initialValue thingIn
 
-        let directory = source |> Binding.editMember subject <@ initialValue.Directory @> noValidation
+        let directory = source |> Binding.memberToFromView bindingSource <@ initialValue.Directory @> (Validation.custom directoryExists)
 
-        // This should call `getDirectory()` and write the result back into the model.
-        // However, I can't figure out how to fit that into the "Observable" concept.
-        let chooseDirectoryCommand = subject.Command "ChooseDirectoryCommand"
+        let dir = Signal.map (fun d -> { Directory = d }) directory
 
-        subject
+        let chooseDirectoryCommand = bindingSource |> Binding.createCommand "ChooseDirectoryCommand"
+
+        let chooseDir =
+            chooseDirectoryCommand
+            |> Observable.map (fun _ ->
+                match getDirectory() with
+                | Some dir -> { source.Value with Directory = dir }
+                | None -> source.Value)
+
+        dir
+        |> Observable.merge chooseDir
+        |> bindingSource.OutputObservable
+
+        bindingSource
 
 module Model =
     
@@ -51,7 +65,11 @@ module Program =
 
         let app = System.Windows.Application()
 
+        let vm = VM.create Model.directoryStream { Directory = @"C:\" }
+
         let window = GjallarhornTest.UI.MainView()
-        window.DataContext <- VM.create Model.directoryStream { Directory = @"C:\" }
+        window.DataContext <- vm
+
+        use sub = vm |> Observable.subscribe Model.add
 
         app.Run window
