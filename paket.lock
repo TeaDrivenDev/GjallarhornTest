@@ -1,5 +1,6 @@
 NUGET
   remote: https://www.nuget.org/api/v2
+  specs:
     Gjallarhorn (0.0.4-beta1) - framework: >= net45
     Gjallarhorn.Bindable (0.0.4-beta1) - framework: >= net45
       Gjallarhorn (>= 0.0.4-beta1) - framework: >= net45, portable-net45+win8+wp8+wpa81
